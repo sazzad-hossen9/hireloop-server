@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import "dotenv/config";
 
 const app = express();
@@ -35,9 +35,42 @@ app.get("/users", async (req, res) => {
   res.send(result);
 });
 
+//! jobs section
 app.post("/jobs", async (req, res) => {
-  const job = req.body();
+  const job = req.body;
   const result = await jobs.insertOne(job);
+  res.status(200).send(result);
+});
+app.get("/jobs", async (req, res) => {
+  const query = {};
+  console.log("query", req.query);
+  if (req.query) {
+    if (req.query.jobType) {
+      query.jobType = req.query.jobType;
+    }
+    if (req.query.isRemote) {
+      query.isRemote = req.query.isRemote === true;
+    }
+    if (req.query.jobCategory) {
+      query.jobCategory = req.query.jobCategory;
+    }
+    if (req.query.search) {
+      query.$or = [
+        { jobTitle: { $regex: req.query.search, $options: "i" } },
+        { responsibilities: { $regex: req.query.search, $options: "i" } },
+        { requirements: { $regex: req.query.search, $options: "i" } },
+      ];
+    }
+  }
+  const cursor = jobs.find(query);
+  const result = await cursor.toArray();
+  res.send(result);
+});
+
+app.delete("/jobs/:id", async (req, res) => {
+  const { id } = req.params;
+  const query = { _id: new ObjectId(id) };
+  const result = await jobs.deleteOne(query);
   res.status(200).send(result);
 });
 app.listen(PORT, () => {
